@@ -1,24 +1,34 @@
 import { GoogleGenAI, Type } from "@google/genai";
-import { Artwork, AnalysisResult } from '../types';
+import { Artwork, AnalysisResult, Audience, Tone } from '../types';
 
-// NOTE: In a production app, never expose keys in client code.
-// This is for the requested functional demo structure.
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-export const analyzeArtwork = async (artwork: Artwork): Promise<AnalysisResult> => {
+export const analyzeArtwork = async (
+  artwork: Artwork, 
+  audience: Audience = Audience.GENERAL,
+  tone: Tone = Tone.EDUCATIONAL
+): Promise<AnalysisResult> => {
   const model = "gemini-3-flash-preview";
   
   const prompt = `
-    Atue como um Curador de Arte Sênior e Estrategista Digital para o projeto "Arte Explicada".
+    Atue como um Estrategista de Conteúdo Digital e Curador de Arte para o projeto "Arte Explicada".
     Analise a obra "${artwork.title}" de ${artwork.artist} (${artwork.year}, ${artwork.movement}).
     
-    Gere um retorno JSON estrito com os seguintes campos:
-    1. historicalContext: Um resumo breve e envolvente do contexto histórico (max 40 palavras).
-    2. emotionalMeaning: A interpretação emocional e simbólica da obra. O que ela nos faz sentir? (max 40 palavras).
-    3. curiosity: Um fato curioso e pouco conhecido sobre a obra.
-    4. modernConnection: Como essa obra se conecta com os dilemas ou vida moderna hoje.
-    5. socialCaption: Uma legenda perfeita para Instagram usando o método AIDA (Atenção, Interesse, Desejo, Ação), com emojis e um tom acessível.
-    6. suggestedPalette: Uma lista de 4 códigos hexadecimais de cores que combinam com a obra para decoração.
+    PÚBLICO ALVO: ${audience}
+    TOM DE VOZ: ${tone}
+
+    Gere um retorno JSON com:
+    1. historicalContext: Resumo histórico (max 40 palavras).
+    2. emotionalMeaning: Interpretação simbólica (max 40 palavras).
+    3. curiosity: Fato curioso.
+    4. modernConnection: Conexão com dias atuais.
+    5. suggestedPalette: 4 cores hex.
+    6. social: Um objeto contendo:
+       - hook: Uma frase inicial de impacto (10-15 palavras) para prender a atenção.
+       - caption: Legenda completa para Instagram usando método AIDA.
+       - hashtags: 10 a 15 hashtags relevantes.
+       - firstComment: Um comentário engajador para fixar.
+       - storyText: Texto curto e direto para usar em um Story (max 20 palavras).
   `;
 
   try {
@@ -34,10 +44,19 @@ export const analyzeArtwork = async (artwork: Artwork): Promise<AnalysisResult> 
             emotionalMeaning: { type: Type.STRING },
             curiosity: { type: Type.STRING },
             modernConnection: { type: Type.STRING },
-            socialCaption: { type: Type.STRING },
             suggestedPalette: { 
               type: Type.ARRAY,
               items: { type: Type.STRING }
+            },
+            social: {
+              type: Type.OBJECT,
+              properties: {
+                hook: { type: Type.STRING },
+                caption: { type: Type.STRING },
+                hashtags: { type: Type.STRING },
+                firstComment: { type: Type.STRING },
+                storyText: { type: Type.STRING },
+              }
             }
           }
         }
@@ -51,20 +70,19 @@ export const analyzeArtwork = async (artwork: Artwork): Promise<AnalysisResult> 
 
   } catch (error) {
     console.error("Gemini Analysis Error:", error);
-    // Fallback mock for demo purposes if API key is invalid/missing
     return {
-      historicalContext: "Uma obra-prima criada durante um período de grande revolução cultural, refletindo as tensões da época.",
-      emotionalMeaning: "A obra evoca uma profunda sensação de introspecção e a busca pela beleza no caos cotidiano.",
-      curiosity: "Dizem que o artista escondeu suas iniciais nos olhos da figura principal.",
-      modernConnection: "Nos lembra da importância de parar e observar o mundo em meio à nossa rotina acelerada de redes sociais.",
-      socialCaption: "Você já parou para olhar os detalhes hoje? ✨ Esta obra nos ensina sobre a beleza do silêncio. Quer essa vibe na sua sala? Link na bio! 🖼️ #Arte #Design",
-      suggestedPalette: ["#2C3E50", "#E74C3C", "#ECF0F1", "#3498DB"]
+      historicalContext: "Erro ao analisar. Tente novamente.",
+      emotionalMeaning: "Arte conecta através do tempo.",
+      curiosity: "Sem dados.",
+      modernConnection: "Sempre atual.",
+      suggestedPalette: ["#000", "#FFF", "#333", "#666"],
+      social: {
+        hook: "Descubra esta obra incrível.",
+        caption: "Arte é vida. #arte",
+        hashtags: "#arte #historia",
+        firstComment: "O que você sentiu?",
+        storyText: "Arte do dia ✨"
+      }
     };
   }
-};
-
-export const suggestMockupConfig = async (artwork: Artwork, mood: string, room: string) => {
-    // This would ideally generate an image prompt or specific CSS config
-    // For this demo, we simulate a delay and return success
-    return new Promise(resolve => setTimeout(resolve, 1500));
 };
