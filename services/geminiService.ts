@@ -11,24 +11,50 @@ export const analyzeArtwork = async (
   const model = "gemini-3-flash-preview";
   
   const prompt = `
-    Atue como um Estrategista de Conteúdo Digital e Curador de Arte para o projeto "Arte Explicada".
-    Analise a obra "${artwork.title}" de ${artwork.artist} (${artwork.year}, ${artwork.movement}).
+    Você é o Editor-Chefe e Curador Digital do "Arte Explicada".
+    Sua missão: Transformar dados brutos de obras de arte em conteúdo viral e educativo.
     
-    PÚBLICO ALVO: ${audience}
+    OBRA: "${artwork.title}" de ${artwork.artist} (${artwork.year}, ${artwork.movement}).
+    PÚBLICO: ${audience}
     TOM DE VOZ: ${tone}
+    
+    ESTRUTURA OBRIGATÓRIA DA NARRATIVA (Use internamente para criar os textos):
+    1. Hook (Gancho de atenção imediata)
+    2. Contexto Histórico (Onde/Quando/Por que)
+    3. Significado Simbólico (A camada invisível)
+    4. Curiosidade (O detalhe que ninguém vê)
+    5. Conexão Moderna (Por que importa hoje?)
+    6. CTA (Chamada para ação: comentar ou ver quadro)
 
-    Gere um retorno JSON com:
-    1. historicalContext: Resumo histórico (max 40 palavras).
-    2. emotionalMeaning: Interpretação simbólica (max 40 palavras).
-    3. curiosity: Fato curioso.
-    4. modernConnection: Conexão com dias atuais.
-    5. suggestedPalette: 4 cores hex.
-    6. social: Um objeto contendo:
-       - hook: Uma frase inicial de impacto (10-15 palavras) para prender a atenção.
-       - caption: Legenda completa para Instagram usando método AIDA.
-       - hashtags: 10 a 15 hashtags relevantes.
-       - firstComment: Um comentário engajador para fixar.
-       - storyText: Texto curto e direto para usar em um Story (max 20 palavras).
+    Gere um JSON estrito com:
+    
+    1. historicalContext: (max 40 palavras)
+    2. emotionalMeaning: (max 40 palavras)
+    3. curiosity: (max 30 palavras)
+    4. modernConnection: (max 30 palavras)
+    5. suggestedPalette: [Hex1, Hex2, Hex3, Hex4]
+    
+    6. social: {
+        instagram: {
+            hook: "Frase curta e impactante para imagem",
+            caption: "Legenda completa estruturada com o método AIDA, emojis e parágrafos curtos.",
+            hashtags: "#hashtags #relevantes",
+            firstComment: "Pergunta engajadora para fixar nos comentários.",
+            storyText: "Texto curto (max 15 palavras) para overlay de Story."
+        },
+        twitter: {
+            thread: [
+                "Tweet 1: O Hook + Imagem",
+                "Tweet 2: O Contexto",
+                "Tweet 3: O Significado oculto",
+                "Tweet 4: Conexão moderna + Link"
+            ]
+        },
+        tiktok: {
+            script: "Roteiro falado (narrativo) de 30 segundos, focado em retenção.",
+            description: "Legenda curta + tags para o algoritmo."
+        }
+    }
   `;
 
   try {
@@ -51,11 +77,29 @@ export const analyzeArtwork = async (
             social: {
               type: Type.OBJECT,
               properties: {
-                hook: { type: Type.STRING },
-                caption: { type: Type.STRING },
-                hashtags: { type: Type.STRING },
-                firstComment: { type: Type.STRING },
-                storyText: { type: Type.STRING },
+                instagram: {
+                    type: Type.OBJECT,
+                    properties: {
+                        hook: { type: Type.STRING },
+                        caption: { type: Type.STRING },
+                        hashtags: { type: Type.STRING },
+                        firstComment: { type: Type.STRING },
+                        storyText: { type: Type.STRING }
+                    }
+                },
+                twitter: {
+                    type: Type.OBJECT,
+                    properties: {
+                        thread: { type: Type.ARRAY, items: { type: Type.STRING } }
+                    }
+                },
+                tiktok: {
+                    type: Type.OBJECT,
+                    properties: {
+                        script: { type: Type.STRING },
+                        description: { type: Type.STRING }
+                    }
+                }
               }
             }
           }
@@ -70,18 +114,23 @@ export const analyzeArtwork = async (
 
   } catch (error) {
     console.error("Gemini Analysis Error:", error);
+    // Fallback mock
     return {
-      historicalContext: "Erro ao analisar. Tente novamente.",
-      emotionalMeaning: "Arte conecta através do tempo.",
-      curiosity: "Sem dados.",
+      historicalContext: "Erro na análise.",
+      emotionalMeaning: "Arte é sentir.",
+      curiosity: "Tente novamente.",
       modernConnection: "Sempre atual.",
-      suggestedPalette: ["#000", "#FFF", "#333", "#666"],
+      suggestedPalette: ["#333", "#666", "#999", "#CCC"],
       social: {
-        hook: "Descubra esta obra incrível.",
-        caption: "Arte é vida. #arte",
-        hashtags: "#arte #historia",
-        firstComment: "O que você sentiu?",
-        storyText: "Arte do dia ✨"
+          instagram: {
+              hook: "Arte incrível",
+              caption: "Legenda indisponível.",
+              hashtags: "#arte",
+              firstComment: "O que achou?",
+              storyText: "Veja isso."
+          },
+          twitter: { thread: ["Erro na geração."] },
+          tiktok: { script: "Erro.", description: "Erro." }
       }
     };
   }

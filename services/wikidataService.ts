@@ -4,6 +4,8 @@ const SPARQL_ENDPOINT = "https://query.wikidata.org/sparql";
 
 const getYearRange = (era: Era) => {
   switch (era) {
+    case Era.ANTIQUITY: return { start: -4000, end: 500 };
+    case Era.MEDIEVAL: return { start: 500, end: 1400 };
     case Era.RENAISSANCE: return { start: 1400, end: 1600 };
     case Era.BAROQUE: return { start: 1600, end: 1750 };
     case Era.MODERN: return { start: 1860, end: 1970 };
@@ -13,12 +15,13 @@ const getYearRange = (era: Era) => {
 };
 
 const getRegionFilter = (region: Region) => {
-  // Q46=Europe, Q12585=Latin America, Q48=Asia, Q49=North America
   switch (region) {
     case Region.EUROPE: return 'wd:Q46';
     case Region.LATAM: return 'wd:Q12585';
     case Region.ASIA: return 'wd:Q48';
     case Region.NORTH_AMERICA: return 'wd:Q49';
+    case Region.AFRICA: return 'wd:Q15';
+    case Region.MIDDLE_EAST: return 'wd:Q7204';
     default: return null;
   }
 };
@@ -26,14 +29,10 @@ const getRegionFilter = (region: Region) => {
 export const fetchCuratedArtworks = async (era: Era, region: Region): Promise<Artwork[]> => {
   const range = getYearRange(era);
   const regionQID = getRegionFilter(region);
-
-  // Filter Logic Explanation:
-  // P31 wd:Q3305213 = Instance of Painting
-  // P18 = Has Image
-  // P571 = Inception Date
-  // P495 = Country of Origin (linked to Continent)
-  // wikibase:sitelinks -> Sort by popularity
   
+  // Use a pseudo-random offset to allow discovering new works
+  const offset = Math.floor(Math.random() * 5); 
+
   let dateFilter = "";
   if (range) {
     dateFilter = `FILTER(YEAR(?date) >= ${range.start} && YEAR(?date) <= ${range.end})`;
@@ -41,15 +40,21 @@ export const fetchCuratedArtworks = async (era: Era, region: Region): Promise<Ar
 
   let regionBlock = "";
   if (regionQID) {
-    regionBlock = `?item wdt:P495 ?country . ?country wdt:P30 ${regionQID} .`;
+    // ?item wdt:P495 ?country . ?country wdt:P30 ?continent . FILTER(?continent = ${regionQID}) is simpler but P30 (continent) varies.
+    // We use a direct path or subpath. For strictness we check P495 (country of origin) -> P30 (continent)
+    regionBlock = `
+      ?item wdt:P495 ?country . 
+      ?country wdt:P30 ${regionQID} .
+    `;
   }
 
   const query = `
     SELECT DISTINCT ?item ?itemLabel ?image ?artistLabel ?date ?movementLabel ?sitelinks WHERE {
-      ?item wdt:P31 wd:Q3305213;
-            wdt:P18 ?image;
-            wdt:P170 ?artist;
-            wdt:P571 ?date.
+      ?item wdt:P31 wd:Q3305213; # Instance of Painting
+            wdt:P18 ?image;      # Has Image
+            wdt:P170 ?artist;    # Has Artist
+            wdt:P571 ?date.      # Has Date
+            
       OPTIONAL { ?item wdt:P135 ?movement. }
       
       ${regionBlock}
@@ -60,7 +65,8 @@ export const fetchCuratedArtworks = async (era: Era, region: Region): Promise<Ar
       SERVICE wikibase:label { bd:serviceParam wikibase:language "[AUTO_LANGUAGE],pt,en". }
     }
     ORDER BY DESC(?sitelinks)
-    LIMIT 15
+    LIMIT 20
+    OFFSET ${offset}
   `;
 
   const url = `${SPARQL_ENDPOINT}?query=${encodeURIComponent(query)}&format=json`;
@@ -75,16 +81,14 @@ export const fetchCuratedArtworks = async (era: Era, region: Region): Promise<Ar
       artist: binding.artistLabel.value,
       year: binding.date ? new Date(binding.date.value).getFullYear().toString() : 'Unknown',
       image: binding.image.value,
-      movement: binding.movementLabel ? binding.movementLabel.value : 'Arte Clássica',
+      movement: binding.movementLabel ? binding.movementLabel.value : 'Movimento Histórico',
     }));
   } catch (error) {
     console.error("Wikidata Fetch Error", error);
-    // Silent fail to fallback (handled in UI or simple empty return to trigger fallback list logic if needed)
     return [];
   }
 };
 
-// Keep the old function for "All/Default" view or fallback
 export const fetchFamousArtworks = async (): Promise<Artwork[]> => {
     return fetchCuratedArtworks(Era.ALL, Region.ALL);
 };
